@@ -1,0 +1,33 @@
+<html>
+	<head>
+		<title>wasm buffer test</title>
+	</head>
+	<body>
+		<script>
+		
+			async function load() {
+				const path = "buffertest.wasm";
+			
+				const binary = await fetch (path);
+				const bytes = await binary.arrayBuffer();
+				const module = await WebAssembly.compile(bytes);
+				const instance = await WebAssembly.Instance(module, {
+				  'env': {
+					'memoryBase': 0,
+					'tableBase': 0,
+					'memory': new WebAssembly.Memory({initial: 256}),
+					'table': new WebAssembly.Table({initial: 0, element: 'anyfunc'})
+				  }
+				});
+				
+				const arr = new Uint8Array([1, 2, 3]);
+				
+				const result = instance.exports._transform(arr.buffer, arr.length);
+				
+				console.log(result, arr);
+			}
+			
+			load();
+		</script>
+	</body>
+</html>
