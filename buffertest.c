@@ -1,14 +1,14 @@
 
 #include <stdint.h>
 
-int counter1 = 23;
-int counter2 = 2;
+uint8_t* buffer = 0;
 
-uint8_t transform(uint8_t* buf, int len) {
+int transform(int length) {
 	
-	for (int i = 0; i < len; i++) {
-		buf[i] += 6;
+	for (int i = 0; i < length; ++i)
+	{
+		buffer[i] = buffer[i] + 1;
 	}
 	
-	return buf[0];
+	return buffer[0];
 }

@@ -6,25 +6,64 @@
 		<script>
 		
 			async function load() {
+			
+				// Create myArray
+				
+				const arrayLength = 1000 * 1000 * 4;
+				const myArray = new Uint8Array(arrayLength);
+				for (let i = 0; i < myArray.length; ++i) {
+					myArray[i] = i % 255;
+				}
+			
+				// Create WASM module
+				
 				const path = "buffertest.wasm";
 			
 				const binary = await fetch (path);
 				const bytes = await binary.arrayBuffer();
-				const module = await WebAssembly.compile(bytes);
-				const instance = await WebAssembly.Instance(module, {
+				
+				const memorySizeInBytes = arrayLength;
+				const pageSize = 64 * 1024; // 64KB
+				const requiredPages = Math.ceil(memorySizeInBytes / pageSize);
+				
+				const memory = new WebAssembly.Memory({
+					initial: Math.max(256, requiredPages)
+				});
+				
+				const importObject = {
 				  'env': {
 					'memoryBase': 0,
 					'tableBase': 0,
-					'memory': new WebAssembly.Memory({initial: 256}),
+					'memory': memory,
 					'table': new WebAssembly.Table({initial: 0, element: 'anyfunc'})
 				  }
-				});
+				};
+
+				const module = await WebAssembly.compile(bytes);
+				const instance = await WebAssembly.Instance(module, importObject);
 				
-				const arr = new Uint8Array([1, 2, 3]);
+				const buffer = memory.buffer;
+				const HEAPU8 = new Uint8Array(buffer)
 				
-				const result = instance.exports._transform(arr.buffer, arr.length);
+				// Transform myArray into resultArray
 				
-				console.log(result, arr);
+				console.time("set");
+				HEAPU8.set(myArray);
+				console.timeEnd("set"); // 0.9ms
+				
+				console.time("transform");
+				const result = instance.exports._transform(myArray.length);
+				console.timeEnd("transform"); // 7ms
+
+				console.time("Uint8Array");
+				const resultArray = new Uint8Array(buffer, 0, myArray.length)
+				console.timeEnd("Uint8Array"); // <1ms
+				
+				console.time("slice");
+				const resultArray2 = new Uint8Array(buffer.slice(0, myArray.length));
+				console.timeEnd("slice"); // 2ms
+				
+				console.log(result, resultArray);
 			}
 			
 			load();
